@@ -33,3 +33,6 @@ class LeadPublic(Lead, table=False):
 
 class LeadCreate(LeadBase):
     pass
+
+class LeadUpdate(LeadBase):
+    pass
