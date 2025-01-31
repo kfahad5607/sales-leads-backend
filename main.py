@@ -1,7 +1,19 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from api.v1.endpoints import leads
+from db.sql import init_db
 
-app = FastAPI()
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("server is starting")
+    # Load the ML model
+    await init_db()
+    yield
+    print("server is shutting down")
+
+app = FastAPI(lifespan=lifespan)
+
+    
 
 # Include routers
 app.include_router(
