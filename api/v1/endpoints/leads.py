@@ -5,7 +5,8 @@ from sqlmodel import select, update, delete
 from db.sql import get_session
 from models.leads import Lead, LeadCreate, LeadUpdate
 from sqlalchemy.exc import IntegrityError
-from exceptions import BaseAppException, ResourceNotFoundException, ValidationException
+from utils.exceptions import BaseAppException, ResourceNotFoundException, ValidationException
+from utils.logger import logger
 
 router = APIRouter()
 
@@ -16,7 +17,7 @@ async def get_leads(session: AsyncSession=Depends(get_session)):
         result = await session.execute(statement)
         return result.scalars().all()
     except Exception as e:
-        print(f"get_leads ==> {e=}")
+        logger.error(f"Exception in get_leads ==> {e}")
         raise BaseAppException("Could not get the leads. Please try again later.") from e
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
@@ -27,10 +28,10 @@ async def create_lead(lead_create: LeadCreate, session: AsyncSession=Depends(get
         await session.commit()
         return new_lead
     except IntegrityError as e:
-        print(f"IntegrityError in create_lead {e=}")
+        logger.error(f"IntegrityError in create_lead ==> {e}")
         raise ValidationException(status_code=status.HTTP_409_CONFLICT, message="Lead with that email already exists.")
     except Exception as e:
-        print(f"Exception create_lead ==> {e=}")
+        logger.error(f"Exception in create_lead ==> {e}")
         await session.rollback()
         raise BaseAppException("Could not create the lead. Please try again later.") from e
     
@@ -77,7 +78,7 @@ async def update_lead(lead_id: UUID, lead_update: LeadUpdate,  session: AsyncSes
     except ResourceNotFoundException as e:
         raise
     except IntegrityError as e:
-        print(f"IntegrityError in update_lead {e=}")
+        logger.error(f"IntegrityError in update_lead ==> {e}")
         raise ValidationException(status_code=status.HTTP_409_CONFLICT, message="Lead with that email already exists.")
     except Exception as e:
         await session.rollback()
@@ -95,6 +96,7 @@ async def delete_lead(lead_id: UUID,  session: AsyncSession=Depends(get_session)
         deleted_lead = result.scalars().first()
     
         if not deleted_lead:
+            raise Exception("dsdsd")
             raise ResourceNotFoundException(message="Lead not found.")
 
         await session.commit()

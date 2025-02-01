@@ -3,21 +3,25 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from api.v1.endpoints import leads
 from db.sql import init_db
-from exceptions import BaseAppException
+from utils.exceptions import BaseAppException
+from utils.logger import logger
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("server is starting")
-    # Load the ML model
+    logger.info("server is starting")
     await init_db()
     yield
-    print("server is shutting down")
+    logger.critical("server is shutting down")
 
 app = FastAPI(lifespan=lifespan)
 
 @app.exception_handler(BaseAppException)
 async def app_exception_handler(request, exc):
-    print("Application error: %s", exc.message)
+    import traceback
+    logger.exception(f"Application error traceback starts ==>")
+    logger.error(traceback.format_exc())
+    logger.exception(f"Application error traceback ends\n")
+    logger.exception(f"Application error msg ==> {exc.message}")
     return JSONResponse(
         status_code=exc.status_code,
         content={"error": exc.message}
