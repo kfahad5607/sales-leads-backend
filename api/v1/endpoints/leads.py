@@ -1,21 +1,62 @@
 from uuid import UUID
-from fastapi import APIRouter, Depends, status
+from typing import Optional
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select, update, delete
+from sqlalchemy import asc, desc
+from sqlmodel import select, update, delete, func
 from db.sql import get_session
 from models.leads import Lead, LeadCreate, LeadUpdate
 from sqlalchemy.exc import IntegrityError
 from utils.exceptions import BaseAppException, ResourceNotFoundException, ValidationException
 from utils.logger import logger
+from utils.helpers import get_total_pages
 
 router = APIRouter()
 
 @router.get("/")
-async def get_leads(session: AsyncSession=Depends(get_session)):
+async def get_leads(
+    session: AsyncSession=Depends(get_session),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(10, ge=1, le=101),
+    sort: Optional[str] = Query(None)
+):
     try:
-        statement = select(Lead).order_by(Lead.created_at)
-        result = await session.execute(statement)
-        return result.scalars().all()
+        offset = (page - 1) * page_size
+        stmt = select(Lead)
+
+        sort_expressions = []
+        if sort:
+            sort_fields = sort.split(",")
+            for field in sort_fields:
+                desc_order = field.startswith("-")
+                col_name = field.lstrip("-")
+
+                if not hasattr(Lead, col_name):
+                    raise ValidationException(message=f"Invalid sort field: {col_name}")
+
+                sort_expr = desc(getattr(Lead, col_name)) if desc_order else asc(getattr(Lead, col_name))
+                sort_expressions.append(sort_expr)
+
+            sort_expressions.append(desc(Lead.created_at))
+            stmt = stmt.order_by(*sort_expressions)
+
+        stmt = stmt.limit(page_size).offset(offset)
+        result = await session.execute(stmt)
+
+        # Get Total Leads
+        total_stmt = select(func.count()).select_from(Lead)
+        total_results = await session.execute(total_stmt)
+        total_count = total_results.scalar()
+
+        return {
+            'current_page': page,
+            'page_size': page_size,
+            'total_records': total_count,
+            'total_pages': get_total_pages(total_count, page_size),
+            'data': result.scalars().all()
+        }
+    except ValidationException as e:
+        raise
     except Exception as e:
         logger.error(f"Exception in get_leads ==> {e}")
         raise BaseAppException("Could not get the leads. Please try again later.") from e
@@ -96,7 +137,6 @@ async def delete_lead(lead_id: UUID,  session: AsyncSession=Depends(get_session)
         deleted_lead = result.scalars().first()
     
         if not deleted_lead:
-            raise Exception("dsdsd")
             raise ResourceNotFoundException(message="Lead not found.")
 
         await session.commit()
