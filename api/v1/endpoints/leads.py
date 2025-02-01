@@ -64,6 +64,9 @@ async def get_leads(
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_lead(lead_create: LeadCreate, session: AsyncSession=Depends(get_session)):
     try:
+        lead_create.name = lead_create.name.strip()
+        lead_create.company_name = lead_create.company_name.strip()
+        lead_create.email = lead_create.email.strip().lower()
         new_lead = Lead(**lead_create.model_dump())
         session.add(new_lead)
         await session.commit()
@@ -100,10 +103,10 @@ async def update_lead(lead_id: UUID, lead_update: LeadUpdate,  session: AsyncSes
             update(Lead)
             .where(Lead.id == lead_id)
             .values(
-                name=lead_update.name,
-                email=lead_update.email,
-                company_name=lead_update.company_name,
-                engaged=lead_update.engaged,
+                name=lead_update.name.strip(),
+                email=lead_update.email.strip().lower(),
+                company_name=lead_update.company_name.strip(),
+                is_engaged=lead_update.is_engaged,
                 last_contacted_at=lead_update.last_contacted_at,
             )
             .returning(Lead)
