@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import asc, desc
 from sqlmodel import select, update, delete, func, text
 from db.sql import get_session
-from models.leads import BulkLeadRequest, Lead, LeadCreate, LeadUpdate, lead_public_fields
+from models.leads import BulkLeadRequest, Lead, LeadCreate, LeadPublic, LeadUpdate, lead_public_fields
 from sqlalchemy.exc import IntegrityError
 from utils.exceptions import BaseAppException, ResourceNotFoundException, ValidationException
 from utils.logger import logger
@@ -53,7 +53,7 @@ def build_query_filter(query: str, model: Lead) -> Optional[str]:
     where_clause = model.search_vector.op('@@')(text("plainto_tsquery('english', :query)"))
     return where_clause
 
-@router.get("/")
+@router.get("/", response_model=List[LeadPublic])
 async def get_leads(
     session: AsyncSession=Depends(get_session),
     page: int = Query(1, ge=1),
@@ -126,7 +126,7 @@ async def export_leads(
         logger.error(f"Exception in get_leads ==> {e}")
         raise BaseAppException("Could not export the leads. Please try again later.") from e
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=LeadPublic)
 async def create_lead(lead_create: LeadCreate, session: AsyncSession=Depends(get_session)):
     try:
         lead_create.name = lead_create.name.strip()
@@ -148,7 +148,7 @@ async def create_lead(lead_create: LeadCreate, session: AsyncSession=Depends(get
         await session.rollback()
         raise BaseAppException("Could not create the lead. Please try again later.") from e
    
-@router.get("/{lead_id}")
+@router.get("/{lead_id}", response_model=LeadPublic)
 async def get_lead(lead_id: int, session: AsyncSession=Depends(get_session)):
     try:
         stmt = select(Lead).where(Lead.id == lead_id)
@@ -164,7 +164,7 @@ async def get_lead(lead_id: int, session: AsyncSession=Depends(get_session)):
     except Exception as e:
         raise BaseAppException("Could not get the lead. Please try again later.") from e
 
-@router.put("/{lead_id}")
+@router.put("/{lead_id}", response_model=LeadPublic)
 async def update_lead(lead_id: int, lead_update: LeadUpdate,  session: AsyncSession=Depends(get_session)):
     try:
         stmt = (
@@ -174,6 +174,7 @@ async def update_lead(lead_id: int, lead_update: LeadUpdate,  session: AsyncSess
                 name=lead_update.name.strip(),
                 email=lead_update.email.strip().lower(),
                 company_name=lead_update.company_name.strip(),
+                stage=lead_update.stage,
                 is_engaged=lead_update.is_engaged,
                 last_contacted_at=lead_update.last_contacted_at,
             )

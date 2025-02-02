@@ -53,8 +53,8 @@ class Lead(LeadBase, table=True):
         Index("idx_lead_search", "search_vector", postgresql_using="gin"),
     )
 
-class LeadPublic(Lead, table=False):
-    pass
+class LeadPublic(LeadBase):
+    id: int = Lead.id
 
 class LeadCreate(LeadBase):
     pass
@@ -66,7 +66,7 @@ class BulkLeadRequest(SQLModel):
     ids: List[int]
 
 lead_public_fields = [
-    Lead.id, 
+    Lead.id,
     Lead.name, 
     Lead.email, 
     Lead.company_name, 
