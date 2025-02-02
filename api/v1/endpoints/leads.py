@@ -19,23 +19,22 @@ async def get_leads(
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=101),
     query: Optional[str] = Query(default=""),
-    sort: Optional[str] = Query(None)
+    sort_by: Optional[str] = Query(None)
 ):
     try:
         query = query.strip()
         offset = (page - 1) * page_size
         stmt = select(Lead)
+        total_count_stmt = select(func.count()).select_from(Lead)
 
         if query:
-            stmt = (
-                stmt
-                .where(Lead.search_vector.op('@@')(text("plainto_tsquery('english', :query)")))
-                .params(query=query)
-            )
+            where_clause = Lead.search_vector.op('@@')(text("plainto_tsquery('english', :query)"))
+            stmt = (stmt.where(where_clause).params(query=query))
+            total_count_stmt = total_count_stmt.where(where_clause).params(query=query)
 
         sort_expressions = []
-        if sort:
-            sort_fields = sort.split(",")
+        if sort_by:
+            sort_fields = sort_by.split(",")
             for field in sort_fields:
                 desc_order = field.startswith("-")
                 col_name = field.lstrip("-")
@@ -53,8 +52,7 @@ async def get_leads(
         result = await session.execute(stmt)
 
         # Get Total Leads
-        total_stmt = select(func.count()).select_from(Lead)
-        total_results = await session.execute(total_stmt)
+        total_results = await session.execute(total_count_stmt)
         total_count = total_results.scalar()
 
         return {
