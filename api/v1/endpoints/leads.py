@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import asc, desc
 from sqlmodel import select, update, delete, func
 from db.sql import get_session
-from models.leads import Lead, LeadCreate, LeadUpdate
+from models.leads import BulkLeadRequest, Lead, LeadCreate, LeadUpdate
 from sqlalchemy.exc import IntegrityError
 from utils.exceptions import BaseAppException, ResourceNotFoundException, ValidationException
 from utils.logger import logger
@@ -83,8 +83,8 @@ async def create_lead(lead_create: LeadCreate, session: AsyncSession=Depends(get
 @router.get("/{lead_id}")
 async def get_lead(lead_id: UUID, session: AsyncSession=Depends(get_session)):
     try:
-        statement = select(Lead).where(Lead.id == lead_id)
-        result = await session.execute(statement)
+        stmt = select(Lead).where(Lead.id == lead_id)
+        result = await session.execute(stmt)
         lead = result.scalars().first()
         
         if not lead:
@@ -99,7 +99,7 @@ async def get_lead(lead_id: UUID, session: AsyncSession=Depends(get_session)):
 @router.put("/{lead_id}")
 async def update_lead(lead_id: UUID, lead_update: LeadUpdate,  session: AsyncSession=Depends(get_session)):
     try:
-        statement = (
+        stmt = (
             update(Lead)
             .where(Lead.id == lead_id)
             .values(
@@ -111,7 +111,7 @@ async def update_lead(lead_id: UUID, lead_update: LeadUpdate,  session: AsyncSes
             )
             .returning(Lead)
         )
-        result = await session.execute(statement)
+        result = await session.execute(stmt)
         updated_lead = result.scalars().first()
 
         if not updated_lead:
@@ -131,12 +131,12 @@ async def update_lead(lead_id: UUID, lead_update: LeadUpdate,  session: AsyncSes
 @router.delete("/{lead_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_lead(lead_id: UUID,  session: AsyncSession=Depends(get_session)):
     try:
-        statement = (
+        stmt = (
             delete(Lead)
             .where(Lead.id == lead_id)
             .returning(Lead)
         )
-        result = await session.execute(statement)
+        result = await session.execute(stmt)
         deleted_lead = result.scalars().first()
     
         if not deleted_lead:
@@ -147,3 +147,22 @@ async def delete_lead(lead_id: UUID,  session: AsyncSession=Depends(get_session)
         raise
     except Exception as e:
         raise BaseAppException("Could not delete the lead. Please try again later.") from e
+    
+@router.post("/bulk-delete", status_code=status.HTTP_204_NO_CONTENT)
+async def bulk_delete_leads(request: BulkLeadRequest, session: AsyncSession=Depends(get_session)):
+    try:
+        ids_to_delete = request.ids
+        if not ids_to_delete:
+            raise ValidationException(message="No IDs provided for deletion.")
+        
+        stmt = (
+            delete(Lead)
+            .where(Lead.id.in_(ids_to_delete))
+        )
+        await session.execute(stmt)
+        await session.commit()
+    except Exception as e:
+        await session.rollback()
+        logger.error(f"Exception in bulk_delete_leads ==> {e}")
+        await session.rollback()
+        raise BaseAppException("Could not delete the leads. Please try again later.") from e

@@ -1,7 +1,7 @@
 from uuid import UUID, uuid4
 from enum import Enum
 from datetime import datetime, timezone
-from typing import Optional
+from typing import List, Optional
 from sqlmodel import SQLModel, Field, Column, DateTime, Enum as SQLAlchemyEnum
 from pydantic import EmailStr
 
@@ -45,3 +45,6 @@ class LeadCreate(LeadBase):
 
 class LeadUpdate(LeadBase):
     pass
+
+class BulkLeadRequest(SQLModel):
+    ids: List[UUID]
