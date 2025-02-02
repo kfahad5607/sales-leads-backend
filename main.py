@@ -1,20 +1,16 @@
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
 from api.v1.endpoints import leads
 from utils.exceptions import BaseAppException
 from utils.logger import logger
 from config import settings
 
+app = FastAPI(title=settings.APP_NAME, debug=True)
 
-app = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG_MODE)
-
-origins = [
-    "http://localhost:5173",
-]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=settings.CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,10 +35,14 @@ app.include_router(
     tags=["leads"]
 )
 
+@app.get("/")
+async def redirect_to_docs():
+    return RedirectResponse(url="/docs")
+
 @app.get("/health")
 async def health_check():
-    return {"status": "ok"}
+    return {"status": "odk"}
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)

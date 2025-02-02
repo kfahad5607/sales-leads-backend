@@ -5,8 +5,9 @@ from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import asc, desc
-from sqlmodel import select, update, delete, func, text
+from sqlmodel import select, update, delete, text, func
 from db.sql import get_session
+from models.common import PaginationResponse
 from models.leads import BulkLeadRequest, Lead, LeadCreate, LeadPublic, LeadUpdate, lead_public_fields
 from sqlalchemy.exc import IntegrityError
 from utils.exceptions import BaseAppException, ResourceNotFoundException, ValidationException
@@ -53,7 +54,7 @@ def build_query_filter(query: str, model: Lead) -> Optional[str]:
     where_clause = model.search_vector.op('@@')(text("plainto_tsquery('english', :query)"))
     return where_clause
 
-@router.get("/", response_model=List[LeadPublic])
+@router.get("/", response_model=PaginationResponse[LeadPublic])
 async def get_leads(
     session: AsyncSession=Depends(get_session),
     page: int = Query(1, ge=1),

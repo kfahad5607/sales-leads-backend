@@ -3,7 +3,7 @@ from faker import Faker
 from datetime import timedelta
 from models.leads import Lead, LeadStage
 from db.sql import get_session
-from sqlmodel import delete
+from sqlmodel import select, delete, func
 from utils.logger import logger
 
 fake = Faker()
@@ -34,25 +34,32 @@ async def seed_leads(n=1000, clear_existing=False):
         session_gen = get_session()
         session = await session_gen.__anext__()
 
-        if True:
-            if clear_existing:
-                statement = delete(Lead)
-                await session.execute(statement)
-                await session.commit()
-            
-            _n = n
-            while _n > 0:
-                leads = generate_fake_leads(min(_n, BATCH_SIZE))
-                session.add_all(leads)
-                await session.commit()
+        if not clear_existing:
+            first_user_stmt = select(Lead.id).limit(1)
+            results = await session.execute(first_user_stmt)
+            first_user = results.scalars().first()
+            if first_user:
+                logger.info(f"Database already contains data, skipping seeding.!")
+                return
 
-                _n = _n - BATCH_SIZE
-                
-                logger.info(f"Seeded batch with {BATCH_SIZE} leads successfully!")
-            logger.info(f"Seeded all {n} leads successfully!")
+        if clear_existing:
+            stmt = delete(Lead)
+            await session.execute(stmt)
+            await session.commit()
+        
+        _n = n
+        while _n > 0:
+            leads = generate_fake_leads(min(_n, BATCH_SIZE))
+            session.add_all(leads)
+            await session.commit()
+
+            _n = _n - BATCH_SIZE
+            
+            logger.info(f"Seeded batch with {BATCH_SIZE} leads successfully!")
+        logger.info(f"Seeded all {n} leads successfully!")
     except Exception as e:
         logger.error(f"Exception in seed_leads ==> {e}")
 
 if __name__ == "__main__":
     import asyncio
-    asyncio.run(seed_leads(n=532, clear_existing=True))
+    asyncio.run(seed_leads(n=532, clear_existing=False))
