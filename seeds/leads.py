@@ -1,5 +1,4 @@
 from collections import OrderedDict
-from uuid import uuid4
 from faker import Faker
 from datetime import timedelta
 from models.leads import Lead, LeadStage
@@ -18,7 +17,6 @@ def generate_fake_leads(n=50):
         last_contacted_at = created_at + timedelta(days=fake.random_int(min=0, max=60)) if fake.boolean() else None
         
         lead = Lead(
-            id=uuid4(),
             name=fake.name(),
             email=fake.unique.email(),
             company_name=fake.company(),
