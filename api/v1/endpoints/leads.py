@@ -1,6 +1,10 @@
+import asyncio
+import csv
+from io import StringIO
 from uuid import UUID
-from typing import Optional
+from typing import Optional, List
 from fastapi import APIRouter, Depends, Query, status
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import asc, desc
 from sqlmodel import select, update, delete, func, text
@@ -12,6 +16,45 @@ from utils.logger import logger
 from utils.helpers import get_total_pages
 
 router = APIRouter()
+
+def prepare_leads_csv(leads: List[Lead]) -> StringIO:
+    """Generate a CSV file from the list of leads."""
+    csv_file = StringIO()
+    writer = csv.writer(csv_file)
+    writer.writerow(['ID', 'Name', 'Email', 'Company', 'Stage', 'Engaged', 'Last Contacted'])
+
+    for lead in leads:
+        writer.writerow([lead.id, lead.name, lead.email, lead.company_name, lead.stage, lead.is_engaged, lead.last_contacted_at])
+    
+    csv_file.seek(0)
+
+    return csv_file
+
+def build_sorting_expression(sort_by: Optional[str], model: Lead) -> List:
+    """Helper to handle sorting logic."""
+    sort_expressions = []
+    if sort_by:
+        sort_fields = sort_by.split(",")
+
+        for field in sort_fields:
+            desc_order = field.startswith("-")
+            col_name = field.lstrip("-")
+
+            if not hasattr(model, col_name):
+                raise ValidationException(message=f"Invalid sort field: {col_name}")
+
+            sort_expr = desc(getattr(model, col_name)) if desc_order else asc(getattr(model, col_name))
+            sort_expressions.append(sort_expr)
+
+        sort_expressions.append(desc(model.created_at))
+
+    return sort_expressions
+
+def build_query_filter(query: str, model: Lead) -> Optional[str]:
+    """Helper to handle query-based filtering logic."""
+    where_clause = model.search_vector.op('@@')(text("plainto_tsquery('english', :query)"))
+    return where_clause
+
 
 @router.get("/")
 async def get_leads(
@@ -28,27 +71,13 @@ async def get_leads(
         total_count_stmt = select(func.count()).select_from(Lead)
 
         if query:
-            where_clause = Lead.search_vector.op('@@')(text("plainto_tsquery('english', :query)"))
-            stmt = (stmt.where(where_clause).params(query=query))
+            where_clause = build_query_filter(query, Lead)
+            stmt = stmt.where(where_clause).params(query=query)
             total_count_stmt = total_count_stmt.where(where_clause).params(query=query)
 
-        sort_expressions = []
-        if sort_by:
-            sort_fields = sort_by.split(",")
-            for field in sort_fields:
-                desc_order = field.startswith("-")
-                col_name = field.lstrip("-")
+        sort_expressions = build_sorting_expression(sort_by=sort_by, model=Lead)
+        stmt = stmt.order_by(*sort_expressions).limit(page_size).offset(offset)
 
-                if not hasattr(Lead, col_name):
-                    raise ValidationException(message=f"Invalid sort field: {col_name}")
-
-                sort_expr = desc(getattr(Lead, col_name)) if desc_order else asc(getattr(Lead, col_name))
-                sort_expressions.append(sort_expr)
-
-            sort_expressions.append(desc(Lead.created_at))
-            stmt = stmt.order_by(*sort_expressions)
-
-        stmt = stmt.limit(page_size).offset(offset)
         result = await session.execute(stmt)
 
         # Get Total Leads
@@ -68,6 +97,37 @@ async def get_leads(
         logger.error(f"Exception in get_leads ==> {e}")
         raise BaseAppException("Could not get the leads. Please try again later.") from e
 
+@router.get("/export")
+async def export_leads(
+    session: AsyncSession=Depends(get_session),
+    query: Optional[str] = Query(default=""),
+    sort_by: Optional[str] = Query(None)
+):
+    try:
+        await asyncio.sleep(1)
+        query = query.strip()
+        stmt = select(Lead)
+        CSV_ROW_LIMIT = 10000
+
+        if query:
+            where_clause = build_query_filter(query, Lead)
+            stmt = stmt.where(where_clause).params(query=query)
+
+        sort_expressions = build_sorting_expression(sort_by, Lead)
+        stmt = stmt.order_by(*sort_expressions).limit(CSV_ROW_LIMIT)
+
+        result = await session.execute(stmt)
+        
+        leads = result.scalars().all()
+        csv_file = prepare_leads_csv(leads)
+
+        return StreamingResponse(csv_file, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=sales_leads.csv"})
+    except ValidationException as e:
+        raise
+    except Exception as e:
+        logger.error(f"Exception in get_leads ==> {e}")
+        raise BaseAppException("Could not export the leads. Please try again later.") from e
+
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_lead(lead_create: LeadCreate, session: AsyncSession=Depends(get_session)):
     try:
@@ -85,8 +145,7 @@ async def create_lead(lead_create: LeadCreate, session: AsyncSession=Depends(get
         logger.error(f"Exception in create_lead ==> {e}")
         await session.rollback()
         raise BaseAppException("Could not create the lead. Please try again later.") from e
-    
-
+   
 @router.get("/{lead_id}")
 async def get_lead(lead_id: UUID, session: AsyncSession=Depends(get_session)):
     try:

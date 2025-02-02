@@ -22,7 +22,7 @@ def generate_fake_leads(n=50):
             name=fake.name(),
             email=fake.unique.email(),
             company_name=fake.company(),
-            engaged=fake.random_choices(elements=OrderedDict([(True, 0.7), (False, 0.3)]), length=1)[0],
+            is_engaged=fake.random_choices(elements=OrderedDict([(True, 0.7), (False, 0.3)]), length=1)[0],
             stage=fake.enum(LeadStage),
             last_contacted_at=last_contacted_at,
             created_at=created_at,
