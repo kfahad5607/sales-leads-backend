@@ -46,11 +46,9 @@ app.include_router(
     tags=["leads"]
 )
 
-@app.get("/")
-async def root():
-    return [{
-        'name': 'Test One'
-    }]
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
 
 if __name__ == "__main__":
     import uvicorn
