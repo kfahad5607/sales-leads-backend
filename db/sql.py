@@ -1,11 +1,11 @@
+from typing import AsyncIterator
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlmodel import SQLModel
-# from sqlmodel.ext.asyncio.session import AsyncSession
-from typing import AsyncIterator
+from config import settings
 
 
-DB_URL = "postgresql+asyncpg://postgres:postgres@localhost:5432/artisandb"
+DB_URL = f"postgresql+asyncpg://{settings.DB_USER}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
 engine = create_async_engine(DB_URL, echo=True)
 async_session = sessionmaker(
     engine, class_=AsyncSession, expire_on_commit=False

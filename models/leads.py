@@ -1,13 +1,11 @@
 from enum import Enum
-from datetime import datetime, timezone
+from datetime import datetime
 from typing import List, Optional
 from sqlmodel import SQLModel, Column, Computed, DateTime, Enum as SQLAlchemyEnum, BigInteger, Field, func
 from sqlalchemy import Index
 from sqlalchemy.dialects.postgresql import TSVECTOR
 from pydantic import EmailStr
-
-def get_current_timestamp():
-    return datetime.now(timezone.utc) 
+from utils.helpers import get_current_timestamp
 
 class LeadStage(str, Enum):
     LOST = "lost"

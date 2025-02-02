@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: artisandb
+      POSTGRES_DB: salesdb
     volumes:
       - sales-leads-postgres_data:/var/lib/postgresql/data
     ports:
