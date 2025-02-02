@@ -2,7 +2,9 @@ from uuid import UUID, uuid4
 from enum import Enum
 from datetime import datetime, timezone
 from typing import List, Optional
-from sqlmodel import SQLModel, Field, Column, DateTime, Enum as SQLAlchemyEnum
+from sqlmodel import SQLModel, Field, Column, Computed, DateTime, Enum as SQLAlchemyEnum
+from sqlalchemy import Index
+from sqlalchemy.dialects.postgresql import TSVECTOR
 from pydantic import EmailStr
 
 def get_current_timestamp():
@@ -36,6 +38,20 @@ class Lead(LeadBase, table=True):
         nullable=False,
         onupdate=get_current_timestamp
     ))
+
+    search_vector: str = Field(
+        sa_column=Column(
+            TSVECTOR,
+            Computed(
+                "to_tsvector('english', name || ' ' || email || ' ' || company_name)",
+                persisted=True
+            )
+        )
+    )
+
+    __table_args__ = (
+        Index("idx_lead_search", "search_vector", postgresql_using="gin"),
+    )
 
 class LeadPublic(Lead, table=False):
     pass

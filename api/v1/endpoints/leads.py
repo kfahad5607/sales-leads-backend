@@ -3,7 +3,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import asc, desc
-from sqlmodel import select, update, delete, func
+from sqlmodel import select, update, delete, func, text
 from db.sql import get_session
 from models.leads import BulkLeadRequest, Lead, LeadCreate, LeadUpdate
 from sqlalchemy.exc import IntegrityError
@@ -18,11 +18,20 @@ async def get_leads(
     session: AsyncSession=Depends(get_session),
     page: int = Query(1, ge=1),
     page_size: int = Query(10, ge=1, le=101),
+    query: Optional[str] = Query(default=""),
     sort: Optional[str] = Query(None)
 ):
     try:
+        query = query.strip()
         offset = (page - 1) * page_size
         stmt = select(Lead)
+
+        if query:
+            stmt = (
+                stmt
+                .where(Lead.search_vector.op('@@')(text("plainto_tsquery('english', :query)")))
+                .params(query=query)
+            )
 
         sort_expressions = []
         if sort:
