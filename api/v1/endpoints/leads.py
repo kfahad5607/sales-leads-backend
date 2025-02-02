@@ -4,12 +4,12 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, desc, nulls_first, nulls_last
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import select, update, delete, text, func
 from db.sql import get_session
 from models.common import PaginationResponse
 from models.leads import BulkLeadRequest, Lead, LeadCreate, LeadPublic, LeadUpdate, lead_public_fields
-from sqlalchemy.exc import IntegrityError
 from utils.exceptions import BaseAppException, ResourceNotFoundException, ValidationException
 from utils.logger import logger
 from utils.helpers import get_total_pages
@@ -42,10 +42,10 @@ def build_sorting_expression(sort_by: Optional[str], model: Lead) -> List:
             if not hasattr(model, col_name):
                 raise ValidationException(message=f"Invalid sort field: {col_name}")
 
-            sort_expr = desc(getattr(model, col_name)) if desc_order else asc(getattr(model, col_name))
+            sort_expr = nulls_last(desc(getattr(model, col_name))) if desc_order else nulls_first(asc(getattr(model, col_name)))
             sort_expressions.append(sort_expr)
 
-        sort_expressions.append(desc(model.created_at))
+    sort_expressions.append(desc(model.created_at))
 
     return sort_expressions
 

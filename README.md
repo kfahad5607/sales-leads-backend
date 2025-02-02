@@ -4,6 +4,16 @@
 
 This is a FastAPI-based REST API for managing sales leads. It supports various CRUD operations (Create, Read, Update, Delete) for sales leads, along with advanced features such as sorting, filtering, pagination, and bulk delete. The API also allows exporting leads to a CSV file.
 
+## Features
+
+- **Create Leads**: Add new sales leads to the system.
+- **Edit Leads**: Modify existing leads with updates.
+- **List Leads**: View all sales leads with customizable pagination.
+- **Delete Leads**: Remove leads from the system.
+- **Multi-column Sorting**: Sort leads by multiple columns using `Ctrl` (Windows/Linux) or `Cmd` (Mac) for selecting more than one column.
+- **Query-based Filtering**: Filter leads based on search criteria.
+- **Bulk Deletion**: Select multiple leads for bulk deletion.
+- **CSV Export**: Export your sales leads to a CSV file.
 
 ## Endpoints
 
