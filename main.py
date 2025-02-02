@@ -41,8 +41,8 @@ async def redirect_to_docs():
 
 @app.get("/health")
 async def health_check():
-    return {"status": "odk"}
+    return {"status": "ok"}
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=False)
