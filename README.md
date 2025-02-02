@@ -1,6 +1,20 @@
-# FastAPI Sales - Installation Guide
+# FastAPI Sales - README
 
-## System Requirements
+## Overview
+
+This is a FastAPI-based REST API for managing sales leads. It supports various CRUD operations (Create, Read, Update, Delete) for sales leads, along with advanced features such as sorting, filtering, pagination, and bulk delete. The API also allows exporting leads to a CSV file.
+
+
+## Endpoints
+
+For detailed API documentation, visit the live version of the app's API documentation:
+
+- [FastAPI Sales API Documentation (PROD)](https://sales-leads-backend.onrender.com/docs)
+
+
+## Installation Guide
+
+### System Requirements
 
 Before setting up the project, ensure that your system meets the following requirements:
 
