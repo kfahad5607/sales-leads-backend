@@ -8,8 +8,10 @@ class Settings(BaseSettings):
     DB_NAME: str = "salesdb"
     DB_USER: str = "postgres"
     DB_PASSWORD: str = "postgres"
+    DB_URL: str = ""
 
     class Config:
         env_file = ".env"
 
 settings = Settings()
+settings.DB_URL = f"postgresql+asyncpg://{settings.DB_USER}:{settings.DB_PASSWORD}@{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"

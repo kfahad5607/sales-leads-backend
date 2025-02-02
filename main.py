@@ -1,20 +1,13 @@
-from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from api.v1.endpoints import leads
-from db.sql import init_db
 from utils.exceptions import BaseAppException
 from utils.logger import logger
+from config import settings
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    logger.info("server is starting")
-    await init_db()
-    yield
-    logger.critical("server is shutting down")
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(title=settings.APP_NAME, debug=settings.DEBUG_MODE)
 
 origins = [
     "http://localhost:5173",

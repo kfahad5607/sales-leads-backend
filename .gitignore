@@ -12,3 +12,6 @@ venv/
 .env.local
 .env.*.local
 *.env
+
+# Migrations
+migrations/versions
