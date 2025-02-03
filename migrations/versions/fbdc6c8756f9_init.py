@@ -1,8 +1,8 @@
 """init
 
-Revision ID: 6614e5f6e1a0
+Revision ID: fbdc6c8756f9
 Revises: 
-Create Date: 2025-02-02 18:56:04.425531
+Create Date: 2025-02-03 10:25:01.196406
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import sqlmodel
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '6614e5f6e1a0'
+revision: str = 'fbdc6c8756f9'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -31,7 +31,7 @@ def upgrade() -> None:
     sa.Column('id', sa.BigInteger(), autoincrement=True, nullable=False),
     sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
     sa.Column('updated_at', sa.DateTime(timezone=True), nullable=False),
-    sa.Column('search_vector', postgresql.TSVECTOR(), sa.Computed("to_tsvector('english', name || ' ' || email || ' ' || company_name)", persisted=True), nullable=True),
+    sa.Column('search_vector', postgresql.TSVECTOR(), sa.Computed("to_tsvector('english', name || ' ' || company_name)", persisted=True), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('email')
     )

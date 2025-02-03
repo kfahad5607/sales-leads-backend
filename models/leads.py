@@ -41,7 +41,7 @@ class Lead(LeadBase, table=True):
         sa_column=Column(
             TSVECTOR,
             Computed(
-                "to_tsvector('english', name || ' ' || email || ' ' || company_name)",
+                "to_tsvector('english', name || ' ' || company_name)",
                 persisted=True
             )
         )
