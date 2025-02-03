@@ -4,7 +4,7 @@ from typing import Optional, List
 from fastapi import APIRouter, Depends, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import asc, desc, nulls_first, nulls_last
+from sqlalchemy import or_, asc, desc, nulls_first, nulls_last
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import select, update, delete, text, func
 from db.sql import get_session
@@ -49,10 +49,10 @@ def build_sorting_expression(sort_by: Optional[str], model: Lead) -> List:
 
     return sort_expressions
 
-def build_query_filter(query: str, model: Lead) -> Optional[str]:
+def build_query_filter(model: Lead) -> Optional[str]:
     """Helper to handle query-based filtering logic."""
-    where_clause = model.search_vector.op('@@')(text("plainto_tsquery('english', :query)"))
-    return where_clause
+    query_condition = model.search_vector.op('@@')(text("plainto_tsquery('english', :query)"))
+    return query_condition
 
 @router.get("/", response_model=PaginationResponse[LeadPublic])
 async def get_leads(
@@ -69,7 +69,10 @@ async def get_leads(
         total_count_stmt = select(func.count()).select_from(Lead)
 
         if query:
-            where_clause = build_query_filter(query, Lead)
+            query_condition = build_query_filter(Lead)
+            email_condition = Lead.email.like(f"%{query.lower()}%")
+            where_clause = or_(query_condition, email_condition)
+
             stmt = stmt.where(where_clause).params(query=query)
             total_count_stmt = total_count_stmt.where(where_clause).params(query=query)
 
@@ -109,7 +112,10 @@ async def export_leads(
         CSV_ROW_LIMIT = 10000
 
         if query:
-            where_clause = build_query_filter(query, Lead)
+            query_condition = build_query_filter(Lead)
+            email_condition = Lead.email.like(f"%{query.lower()}%")
+            where_clause = or_(query_condition, email_condition)
+
             stmt = stmt.where(where_clause).params(query=query)
 
         sort_expressions = build_sorting_expression(sort_by, Lead)
